@@ -1,4 +1,5 @@
 mod config;
+mod error;
 mod server;
 
 use config::Config;

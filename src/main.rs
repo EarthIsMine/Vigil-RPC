@@ -19,7 +19,7 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Config::from_env();
 
-    let rpc_sender = DirectRpcSender::new(&config.solana_rpc_url);
+    let rpc_sender = DirectRpcSender::new(&config.solana_send_tx_url);
 
     let state = AppState {
         config: Arc::new(config.clone()),

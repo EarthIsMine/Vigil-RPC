@@ -7,4 +7,5 @@ use crate::transmission::rpc_forward::DirectRpcSender;
 pub struct AppState {
     pub config: Arc<Config>,
     pub rpc_sender: Arc<DirectRpcSender>,
+    pub http_client: reqwest::Client,
 }

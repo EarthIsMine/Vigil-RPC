@@ -40,7 +40,7 @@ impl JsonRpcResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct JsonRpcError {
     pub code: i64,
     pub message: String,

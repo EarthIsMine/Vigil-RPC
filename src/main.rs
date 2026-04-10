@@ -24,6 +24,7 @@ async fn main() -> anyhow::Result<()> {
     let state = AppState {
         config: Arc::new(config.clone()),
         rpc_sender: Arc::new(rpc_sender),
+        http_client: reqwest::Client::new(),
     };
 
     let app = server::routes::app_router(state);

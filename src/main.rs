@@ -2,9 +2,14 @@ mod analyzer;
 mod config;
 mod error;
 mod server;
+mod state;
 mod transmission;
 
+use std::sync::Arc;
+
 use config::Config;
+use state::AppState;
+use transmission::rpc_forward::DirectRpcSender;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -13,7 +18,15 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let config = Config::from_env();
-    let app = server::routes::app_router();
+
+    let rpc_sender = DirectRpcSender::new(&config.solana_rpc_url);
+
+    let state = AppState {
+        config: Arc::new(config.clone()),
+        rpc_sender: Arc::new(rpc_sender),
+    };
+
+    let app = server::routes::app_router(state);
 
     let addr = format!("0.0.0.0:{}", config.port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;

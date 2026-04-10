@@ -1,3 +1,4 @@
+mod analyzer;
 mod config;
 mod error;
 mod server;

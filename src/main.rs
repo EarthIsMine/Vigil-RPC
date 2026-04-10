@@ -2,6 +2,7 @@ mod analyzer;
 mod config;
 mod error;
 mod server;
+mod transmission;
 
 use config::Config;
 

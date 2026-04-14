@@ -2,6 +2,7 @@ use axum::extract::State;
 use axum::Json;
 use serde_json::Value;
 
+use crate::analyzer::swap_detector::detect_swap;
 use crate::analyzer::tx_parser::decode_transaction;
 use crate::error::ApiError;
 use crate::server::rpc_types::{JsonRpcRequest, JsonRpcResponse, SendTransactionConfig};
@@ -48,6 +49,17 @@ async fn handle_send_transaction(
         "sendTransaction received"
     );
 
+    // Detect DEX swap using sandwich-detector's program ID registry
+    let is_swap = detect_swap(&tx);
+    if let Some(ref swap) = is_swap {
+        tracing::info!(
+            dex = %swap.dex_name,
+            program_id = %swap.program_id,
+            "swap transaction detected — protection candidate"
+        );
+    }
+
+    // TODO(Tier 2): if is_swap.is_some() → route to Jito Bundle instead of Direct RPC
     // Forward to Solana RPC (Tier 1: always direct forward)
     let signature = state.rpc_sender.send_transaction(&tx, &user_config).await?;
 

@@ -56,24 +56,17 @@ impl PoolRiskMap {
 
     /// Find the highest risk score among a set of candidate pool addresses.
     /// Takes a single read lock for the entire batch to minimize contention.
-    pub fn best_score(&self, candidates: &[String]) -> (Option<String>, f32) {
+
+    pub fn score(&self, pool: &str) -> f32 {
         let Ok(cache) = self.inner.read() else {
-            return (None, 0.0);
+            return 0.0;
         };
-        let mut best_pool = None;
-        let mut best_score = 0.0_f32;
-        for cand in candidates {
-            if let Some(stats) = cache.peek(cand) {
-                if stats.last_updated.elapsed() <= self.ttl {
-                    let score = Self::compute_score(stats.recent_sandwich_count);
-                    if score > best_score {
-                        best_score = score;
-                        best_pool = Some(cand.clone());
-                    }
-                }
+        match cache.peek(pool) {
+            Some(s) if s.last_updated.elapsed() <= self.ttl => {
+                Self::compute_score(s.recent_sandwich_count)
             }
+            _ => 0.0,
         }
-        (best_pool, best_score)
     }
 
     fn compute_score(count: u32) -> f32 {

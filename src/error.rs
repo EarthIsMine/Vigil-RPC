@@ -16,6 +16,9 @@ pub enum ApiError {
     #[error("RPC forward failed: {0}")]
     RpcForwardFailed(String),
 
+    #[error("transaction blocked by protection policy: {0}")]
+    TxBlocked(String),
+
     #[error(transparent)]
     Internal(#[from] anyhow::Error),
 }
@@ -26,6 +29,7 @@ impl ApiError {
             Self::InvalidRequest(_) => -32600,
             Self::TxDecodeFailed(_) => -32602,
             Self::RpcForwardFailed(_) => -32603,
+            Self::TxBlocked(_) => -32004,
             Self::Internal(_) => -32603,
         }
     }
@@ -48,6 +52,7 @@ impl IntoResponse for ApiError {
             Self::InvalidRequest(_) => StatusCode::BAD_REQUEST,
             Self::TxDecodeFailed(_) => StatusCode::BAD_REQUEST,
             Self::RpcForwardFailed(_) => StatusCode::BAD_GATEWAY,
+            Self::TxBlocked(_) => StatusCode::FORBIDDEN,
             Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         };
 

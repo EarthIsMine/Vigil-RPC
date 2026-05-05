@@ -19,6 +19,9 @@ base64 = "0.22"
 bincode = "1"
 bs58 = "0.5"
 reqwest = { version = "0.12", features = ["json"] }
+sandwich-detector = { git = "https://github.com/SangHyeonKwon/solana-sandwich-detector" }
+lru = "0.12"
+dotenvy = "0.15"
 
 [dev-dependencies]
 solana-system-transaction = "2"

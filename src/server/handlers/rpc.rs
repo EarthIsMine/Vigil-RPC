@@ -2,9 +2,13 @@ use axum::extract::State;
 use axum::Json;
 use serde_json::Value;
 
-use crate::analyzer::swap_detector::detect_swap;
+use crate::analyzer::swap_detector::{
+    account_keys_as_strings, detect_swap, signer_as_string,
+};
 use crate::analyzer::tx_parser::decode_transaction;
+use crate::config::BlockMode;
 use crate::error::ApiError;
+use crate::risk::{assess, decode_slippage, RiskAssessment, RiskLevel};
 use crate::server::rpc_types::{JsonRpcRequest, JsonRpcResponse, SendTransactionConfig};
 use crate::state::AppState;
 
@@ -57,11 +61,25 @@ async fn handle_send_transaction(
             program_id = %swap.program_id,
             "swap transaction detected — protection candidate"
         );
+
+        let assessment = evaluate_risk(state, &tx);
+        state.metrics.record_risk(assessment.level);
+        tracing::info!(
+            level = ?assessment.level,
+            pool_score = assessment.pool_score,
+            slippage_unbounded = assessment.slippage_pct.is_some(),
+            reasons = ?assessment.reasons,
+            "risk assessment"
+        );
+
+        if assessment.level == RiskLevel::Block && state.config.block_mode == BlockMode::Strict {
+            state.metrics.record_blocked_strict();
+            return Err(ApiError::TxBlocked(format!("{:?}", assessment.reasons)));
+        }
     }
 
-    // TODO(Tier 2): if is_swap.is_some() → route to Jito Bundle instead of Direct RPC
-    // Forward to Solana RPC (Tier 1: always direct forward)
     let signature = state.rpc_sender.send_transaction(&tx, &user_config).await?;
+    state.metrics.record_forwarded();
 
     tracing::info!(%signature, "transaction forwarded");
 
@@ -69,6 +87,35 @@ async fn handle_send_transaction(
         req.id.clone(),
         Value::String(signature.to_string()),
     ))
+}
+
+/// Run the risk assessment pipeline against a swap-bearing transaction.
+///
+/// Pool identification is approximated by scoring every static account key and
+/// taking the maximum — DEX-specific account-index decoding is deferred to a
+/// later phase (see `risk::slippage` Phase B).
+fn evaluate_risk(state: &AppState, tx: &solana_sdk::transaction::VersionedTransaction) -> RiskAssessment {
+    let signer = signer_as_string(tx);
+    let candidates = account_keys_as_strings(tx);
+
+    let mut best_pool: Option<String> = None;
+    let mut best_score = 0.0_f32;
+    for cand in &candidates {
+        let score = state.pool_map.score(cand);
+        if score > best_score {
+            best_score = score;
+            best_pool = Some(cand.clone());
+        }
+    }
+
+    let slippage = decode_slippage(tx);
+    assess(
+        best_pool.as_deref(),
+        signer.as_deref(),
+        &slippage,
+        &state.pool_map,
+        &state.attacker_set,
+    )
 }
 
 /// Pass-through: forward any non-sendTransaction JSON-RPC request to upstream Solana RPC.

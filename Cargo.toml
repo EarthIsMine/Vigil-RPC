@@ -25,3 +25,5 @@ dotenvy = "0.15"
 
 [dev-dependencies]
 solana-system-transaction = "2"
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"

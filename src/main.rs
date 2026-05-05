@@ -6,6 +6,8 @@ mod risk;
 mod server;
 mod slot_watcher;
 mod state;
+#[cfg(test)]
+mod tests;
 mod transmission;
 
 use std::sync::Arc;

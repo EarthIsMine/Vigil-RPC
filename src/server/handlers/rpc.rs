@@ -73,12 +73,23 @@ async fn handle_send_transaction(
             state.metrics.record_blocked_strict();
             return Err(ApiError::TxBlocked(format!("{:?}", assessment.reasons)));
         }
+
+        if state.config.jito_enabled && assessment.level != RiskLevel::Safe {
+            tracing::info!("routing swap via Jito relay for MEV protection");
+            let signature = state.jito_sender.send_transaction(&tx).await?;
+            state.metrics.record_jito_routed();
+            tracing::info!(%signature, route = "jito", "transaction forwarded via Jito");
+            return Ok(JsonRpcResponse::success(
+                req.id.clone(),
+                Value::String(signature.to_string()),
+            ));
+        }
     }
 
     let signature = state.rpc_sender.send_transaction(&tx, &user_config).await?;
     state.metrics.record_forwarded();
 
-    tracing::info!(%signature, "transaction forwarded");
+    tracing::info!(%signature, route = "direct", "transaction forwarded");
 
     Ok(JsonRpcResponse::success(
         req.id.clone(),

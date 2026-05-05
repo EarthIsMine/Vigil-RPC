@@ -152,6 +152,8 @@ mod http_integration {
 
     fn test_state() -> AppState {
         use crate::config::BlockMode;
+        use crate::transmission::jito_sender::JitoSender;
+        let http_client = reqwest::Client::new();
         let config = Config {
             port: 0,
             solana_rpc_url: "http://127.0.0.1:1".to_string(),
@@ -162,11 +164,14 @@ mod http_integration {
             pool_lru_capacity: 100,
             attacker_lru_capacity: 100,
             pool_ttl_secs: 3600,
+            jito_block_engine_url: "http://127.0.0.1:1".to_string(),
+            jito_enabled: false,
         };
         AppState {
             config: Arc::new(config),
             rpc_sender: Arc::new(DirectRpcSender::new("http://127.0.0.1:1")),
-            http_client: reqwest::Client::new(),
+            jito_sender: Arc::new(JitoSender::new(http_client.clone(), None)),
+            http_client,
             pool_map: Arc::new(PoolRiskMap::new(100, Duration::from_secs(3600))),
             attacker_set: Arc::new(AttackerSet::new(100, Duration::from_secs(3600))),
             metrics: Arc::new(Metrics::new()),

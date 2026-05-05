@@ -74,15 +74,21 @@ async fn handle_send_transaction(
             return Err(ApiError::TxBlocked(format!("{:?}", assessment.reasons)));
         }
 
-        if state.config.jito_enabled && assessment.level != RiskLevel::Safe {
-            tracing::info!("routing swap via Jito relay for MEV protection");
-            let signature = state.jito_sender.send_transaction(&tx).await?;
-            state.metrics.record_jito_routed();
-            tracing::info!(%signature, route = "jito", "transaction forwarded via Jito");
-            return Ok(JsonRpcResponse::success(
-                req.id.clone(),
-                Value::String(signature.to_string()),
-            ));
+        if state.config.jito_enabled {
+            tracing::info!(level = ?assessment.level, "routing swap via Jito relay");
+            match state.jito_sender.send_transaction(&tx).await {
+                Ok(signature) => {
+                    state.metrics.record_jito_routed();
+                    tracing::info!(%signature, route = "jito", "transaction sent via Jito");
+                    return Ok(JsonRpcResponse::success(
+                        req.id.clone(),
+                        Value::String(signature.to_string()),
+                    ));
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "Jito relay failed, falling back to Direct RPC");
+                }
+            }
         }
     }
 

@@ -11,6 +11,7 @@ pub struct Metrics {
     pub risk_block_total: AtomicU64,
     pub blocked_strict_total: AtomicU64,
     pub forwarded_total: AtomicU64,
+    pub jito_routed_total: AtomicU64,
     pub slot_processed_total: AtomicU64,
     pub slot_failed_total: AtomicU64,
     pub sandwich_detected_total: AtomicU64,
@@ -38,6 +39,10 @@ impl Metrics {
         self.forwarded_total.fetch_add(1, Ordering::Relaxed);
     }
 
+    pub fn record_jito_routed(&self) {
+        self.jito_routed_total.fetch_add(1, Ordering::Relaxed);
+    }
+
     pub fn record_slot(&self, ok: bool, sandwiches: u64) {
         if ok {
             self.slot_processed_total.fetch_add(1, Ordering::Relaxed);
@@ -57,6 +62,7 @@ impl Metrics {
             "risk_block_total": self.risk_block_total.load(Ordering::Relaxed),
             "blocked_strict_total": self.blocked_strict_total.load(Ordering::Relaxed),
             "forwarded_total": self.forwarded_total.load(Ordering::Relaxed),
+            "jito_routed_total": self.jito_routed_total.load(Ordering::Relaxed),
             "slot_processed_total": self.slot_processed_total.load(Ordering::Relaxed),
             "slot_failed_total": self.slot_failed_total.load(Ordering::Relaxed),
             "sandwich_detected_total": self.sandwich_detected_total.load(Ordering::Relaxed),

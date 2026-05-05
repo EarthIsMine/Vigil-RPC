@@ -36,6 +36,10 @@ pub struct Config {
     pub attacker_lru_capacity: usize,
     /// TTL (seconds) before pool/attacker entries are considered stale.
     pub pool_ttl_secs: u64,
+    /// Jito Block Engine URL for protected transaction relay.
+    pub jito_block_engine_url: String,
+    /// Whether to route swap transactions through Jito relay.
+    pub jito_enabled: bool,
 }
 
 impl Config {
@@ -77,6 +81,11 @@ impl Config {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(60 * 60 * 24),
+            jito_block_engine_url: env::var("JITO_BLOCK_ENGINE_URL")
+                .unwrap_or_else(|_| "https://mainnet.block-engine.jito.wtf".to_string()),
+            jito_enabled: env::var("JITO_ENABLED")
+                .map(|v| v == "true" || v == "1")
+                .unwrap_or(true),
         }
     }
 }

@@ -17,6 +17,7 @@ use config::Config;
 use metrics::Metrics;
 use risk::{AttackerSet, PoolRiskMap};
 use state::AppState;
+use transmission::jito_sender::JitoSender;
 use transmission::rpc_forward::DirectRpcSender;
 
 #[tokio::main]
@@ -40,10 +41,17 @@ async fn main() -> anyhow::Result<()> {
         Duration::from_secs(config.pool_ttl_secs),
     ));
 
+    let http_client = reqwest::Client::new();
+    let jito_sender = JitoSender::new(
+        http_client.clone(),
+        Some(config.jito_block_engine_url.clone()),
+    );
+
     let state = AppState {
         config: Arc::new(config.clone()),
         rpc_sender: Arc::new(rpc_sender),
-        http_client: reqwest::Client::new(),
+        jito_sender: Arc::new(jito_sender),
+        http_client,
         pool_map,
         attacker_set,
         metrics: Arc::new(Metrics::new()),

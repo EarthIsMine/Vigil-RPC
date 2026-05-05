@@ -2,9 +2,7 @@ use axum::extract::State;
 use axum::Json;
 use serde_json::Value;
 
-use crate::analyzer::swap_detector::{
-    account_keys_as_strings, detect_swap, signer_as_string,
-};
+use crate::analyzer::swap_detector::{detect_swap, extract_pool_address, signer_as_string};
 use crate::analyzer::tx_parser::decode_transaction;
 use crate::config::BlockMode;
 use crate::error::ApiError;
@@ -93,14 +91,13 @@ async fn handle_send_transaction(
 /// Pool identification is approximated by scoring every static account key and
 /// taking the maximum — DEX-specific account-index decoding is deferred to a
 /// later phase (see `risk::slippage` Phase B).
-const MAX_ACCOUNT_KEYS_TO_CHECK: usize = 32;
-
 fn evaluate_risk(state: &AppState, tx: &solana_sdk::transaction::VersionedTransaction) -> RiskAssessment {
     let signer = signer_as_string(tx);
-    let mut candidates = account_keys_as_strings(tx);
-    candidates.truncate(MAX_ACCOUNT_KEYS_TO_CHECK);
-
-    let (_, pool_score) = state.pool_map.best_score(&candidates);
+    let pool = extract_pool_address(tx);
+    let pool_score = pool
+        .as_deref()
+        .map(|p| state.pool_map.score(p))
+        .unwrap_or(0.0);
 
     let slippage = decode_slippage(tx);
     assess(

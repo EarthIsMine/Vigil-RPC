@@ -39,7 +39,9 @@ impl PoolRiskMap {
     }
 
     pub fn record_attack(&self, attack: &SandwichAttack) {
-        let mut cache = self.inner.write().unwrap();
+        let Ok(mut cache) = self.inner.write() else {
+            return;
+        };
         let entry = cache.get_or_insert_mut(attack.pool.clone(), PoolStats::default);
         entry.recent_sandwich_count = entry.recent_sandwich_count.saturating_add(1);
         if let Some(profit) = attack.estimated_attacker_profit {
@@ -52,28 +54,29 @@ impl PoolRiskMap {
         entry.last_updated = Instant::now();
     }
 
-    /// Pool risk score in [0.0, 1.0]. Higher = more dangerous.
-    /// Currently log-scaled by recent_sandwich_count.
-    pub fn score(&self, pool: &str) -> f32 {
-        let cache = self.inner.read().unwrap();
-        let stats = match cache.peek(pool) {
-            Some(s) => s,
-            None => return 0.0,
+    /// Find the highest risk score among a set of candidate pool addresses.
+    /// Takes a single read lock for the entire batch to minimize contention.
+    pub fn best_score(&self, candidates: &[String]) -> (Option<String>, f32) {
+        let Ok(cache) = self.inner.read() else {
+            return (None, 0.0);
         };
-        if stats.last_updated.elapsed() > self.ttl {
-            return 0.0;
+        let mut best_pool = None;
+        let mut best_score = 0.0_f32;
+        for cand in candidates {
+            if let Some(stats) = cache.peek(cand) {
+                if stats.last_updated.elapsed() <= self.ttl {
+                    let score = Self::compute_score(stats.recent_sandwich_count);
+                    if score > best_score {
+                        best_score = score;
+                        best_pool = Some(cand.clone());
+                    }
+                }
+            }
         }
-        let count = stats.recent_sandwich_count as f32;
-        (1.0 + count).log2() / 8.0_f32
+        (best_pool, best_score)
     }
 
-    #[allow(dead_code)]
-    pub fn snapshot_top(&self, n: usize) -> Vec<(String, PoolStats)> {
-        let cache = self.inner.read().unwrap();
-        cache
-            .iter()
-            .take(n)
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect()
+    fn compute_score(count: u32) -> f32 {
+        ((1.0 + count as f32).log2() / 8.0).min(1.0)
     }
 }

@@ -8,7 +8,6 @@ const ORCA_SWAP_DISC: [u8; 8] = [248, 198, 158, 145, 225, 117, 135, 200];
 pub struct SlippageInfo {
     pub min_amount_out: Option<u64>,
     pub max_amount_in: Option<u64>,
-    pub allowed_pct: Option<f32>,
     pub unbounded: bool,
 }
 

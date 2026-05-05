@@ -37,7 +37,9 @@ impl AttackerSet {
     }
 
     pub fn record(&self, attack: &SandwichAttack) {
-        let mut cache = self.inner.write().unwrap();
+        let Ok(mut cache) = self.inner.write() else {
+            return;
+        };
         let entry = cache.get_or_insert_mut(attack.attacker.clone(), AttackerStats::default);
         entry.attack_count = entry.attack_count.saturating_add(1);
         entry.last_seen_slot = entry.last_seen_slot.max(attack.slot);
@@ -45,7 +47,9 @@ impl AttackerSet {
     }
 
     pub fn contains_active(&self, signer: &str) -> bool {
-        let cache = self.inner.read().unwrap();
+        let Ok(cache) = self.inner.read() else {
+            return false;
+        };
         match cache.peek(signer) {
             Some(s) => s.last_updated.elapsed() <= self.ttl,
             None => false,

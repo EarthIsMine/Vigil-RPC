@@ -44,7 +44,7 @@ async fn main() -> anyhow::Result<()> {
         http_client: reqwest::Client::new(),
         pool_map,
         attacker_set,
-        metrics: Metrics::new(),
+        metrics: Arc::new(Metrics::new()),
     };
 
     slot_watcher::spawn_slot_watcher(state.clone());

@@ -1,10 +1,6 @@
 use sandwich_detector::dex::all_parsers;
 use solana_sdk::transaction::VersionedTransaction;
 
-// Re-export sandwich-detector types for use across vigil-rpc
-pub use sandwich_detector::detector::detect_sandwiches;
-pub use sandwich_detector::types::{DexType, SandwichAttack, SwapDirection, SwapEvent};
-
 /// Additional DEX program IDs not yet in sandwich-detector
 const EXTRA_DEX_PROGRAMS: &[(&str, &str)] = &[(
     "LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo",

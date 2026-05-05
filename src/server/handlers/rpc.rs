@@ -67,7 +67,6 @@ async fn handle_send_transaction(
         tracing::info!(
             level = ?assessment.level,
             pool_score = assessment.pool_score,
-            slippage_unbounded = assessment.slippage_pct.is_some(),
             reasons = ?assessment.reasons,
             "risk assessment"
         );
@@ -94,26 +93,20 @@ async fn handle_send_transaction(
 /// Pool identification is approximated by scoring every static account key and
 /// taking the maximum — DEX-specific account-index decoding is deferred to a
 /// later phase (see `risk::slippage` Phase B).
+const MAX_ACCOUNT_KEYS_TO_CHECK: usize = 32;
+
 fn evaluate_risk(state: &AppState, tx: &solana_sdk::transaction::VersionedTransaction) -> RiskAssessment {
     let signer = signer_as_string(tx);
-    let candidates = account_keys_as_strings(tx);
+    let mut candidates = account_keys_as_strings(tx);
+    candidates.truncate(MAX_ACCOUNT_KEYS_TO_CHECK);
 
-    let mut best_pool: Option<String> = None;
-    let mut best_score = 0.0_f32;
-    for cand in &candidates {
-        let score = state.pool_map.score(cand);
-        if score > best_score {
-            best_score = score;
-            best_pool = Some(cand.clone());
-        }
-    }
+    let (_, pool_score) = state.pool_map.best_score(&candidates);
 
     let slippage = decode_slippage(tx);
     assess(
-        best_pool.as_deref(),
+        pool_score,
         signer.as_deref(),
         &slippage,
-        &state.pool_map,
         &state.attacker_set,
     )
 }

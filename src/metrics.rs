@@ -1,5 +1,4 @@
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Arc;
 
 use serde_json::{json, Value};
 
@@ -18,8 +17,8 @@ pub struct Metrics {
 }
 
 impl Metrics {
-    pub fn new() -> Arc<Self> {
-        Arc::new(Self::default())
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn record_risk(&self, level: RiskLevel) {

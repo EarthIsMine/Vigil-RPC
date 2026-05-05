@@ -7,6 +7,11 @@
 </p>
 
 <p align="center">
+  <strong>English</strong> &middot;
+  <a href="README.ko.md">한국어</a>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white" alt="Rust" />
   <img src="https://img.shields.io/badge/Solana-9945FF?style=for-the-badge&logo=solana&logoColor=white" alt="Solana" />
   <img src="https://img.shields.io/badge/Axum-232323?style=for-the-badge&logo=rust&logoColor=white" alt="Axum" />

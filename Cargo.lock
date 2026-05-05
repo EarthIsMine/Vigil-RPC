@@ -6663,6 +6663,7 @@ dependencies = [
  "bincode",
  "bs58",
  "dotenvy",
+ "http-body-util",
  "lru",
  "reqwest",
  "sandwich-detector",
@@ -6674,6 +6675,7 @@ dependencies = [
  "solana-transaction-status",
  "thiserror 2.0.18",
  "tokio",
+ "tower",
  "tracing",
  "tracing-subscriber",
 ]

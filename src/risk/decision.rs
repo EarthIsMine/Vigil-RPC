@@ -49,6 +49,13 @@ pub fn assess(
         reasons.push("slippage_unbounded".to_string());
     }
 
+    if let Some(bps) = slippage.slippage_bps {
+        if bps > 1000 && level != RiskLevel::Block {
+            level = RiskLevel::Block;
+            reasons.push(format!("slippage_bps={}(>10%)", bps));
+        }
+    }
+
     RiskAssessment {
         level,
         reasons,

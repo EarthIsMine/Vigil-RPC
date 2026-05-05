@@ -49,13 +49,16 @@ fn merge(info: &mut SlippageInfo, parsed: SlippageInfo) {
         info.unbounded = true;
     }
     if let Some(v) = parsed.min_amount_out {
-        info.min_amount_out = Some(v);
+        let prev = info.min_amount_out.unwrap_or(u64::MAX);
+        info.min_amount_out = Some(prev.min(v));
     }
     if let Some(v) = parsed.max_amount_in {
-        info.max_amount_in = Some(v);
+        let prev = info.max_amount_in.unwrap_or(0);
+        info.max_amount_in = Some(prev.max(v));
     }
     if let Some(v) = parsed.slippage_bps {
-        info.slippage_bps = Some(v);
+        let prev = info.slippage_bps.unwrap_or(0);
+        info.slippage_bps = Some(prev.max(v));
     }
 }
 
@@ -105,10 +108,23 @@ fn decode_orca_whirlpool(data: &[u8]) -> Option<SlippageInfo> {
     }
 }
 
+/// Jupiter V6 Anchor discriminators for swap instructions.
+const JUP_ROUTE_DISC: [u8; 8] = [229, 23, 203, 151, 122, 227, 173, 42];
+const JUP_SHARED_ACCOUNTS_ROUTE_DISC: [u8; 8] = [193, 32, 155, 51, 65, 214, 156, 129];
+const JUP_SHARED_EXACT_OUT_DISC: [u8; 8] = [176, 209, 105, 168, 154, 125, 69, 62];
+
 /// Jupiter V6 route/shared_accounts_route: last 3 bytes are always
 /// `slippage_bps: u16` + `platform_fee_bps: u8` (borsh, LE).
+/// Only decoded for known swap discriminators to avoid false positives.
 fn decode_jupiter_v6(data: &[u8]) -> Option<SlippageInfo> {
-    if data.len() < 11 {
+    if data.len() < 24 {
+        return None;
+    }
+    let disc: [u8; 8] = data[..8].try_into().ok()?;
+    if disc != JUP_ROUTE_DISC
+        && disc != JUP_SHARED_ACCOUNTS_ROUTE_DISC
+        && disc != JUP_SHARED_EXACT_OUT_DISC
+    {
         return None;
     }
     let bps = u16::from_le_bytes(data[data.len() - 3..data.len() - 1].try_into().ok()?);
@@ -183,10 +199,12 @@ mod tests {
 
     #[test]
     fn jupiter_low_slippage() {
-        let mut data = vec![0u8; 30];
+        let mut data = JUP_SHARED_ACCOUNTS_ROUTE_DISC.to_vec();
+        data.extend_from_slice(&[0u8; 19]); // padding to 30 bytes total
         let len = data.len();
         data[len - 3] = 50; // 50 bps = 0.5%
         data[len - 2] = 0;
+        data[len - 1] = 0; // platform_fee_bps
         let info = decode_jupiter_v6(&data).unwrap();
         assert_eq!(info.slippage_bps, Some(50));
         assert!(!info.unbounded);
@@ -194,12 +212,14 @@ mod tests {
 
     #[test]
     fn jupiter_high_slippage() {
-        let mut data = vec![0u8; 30];
+        let mut data = JUP_ROUTE_DISC.to_vec();
+        data.extend_from_slice(&[0u8; 19]);
         let bps: u16 = 1000; // 10%
         let bps_bytes = bps.to_le_bytes();
         let len = data.len();
         data[len - 3] = bps_bytes[0];
         data[len - 2] = bps_bytes[1];
+        data[len - 1] = 0;
         let info = decode_jupiter_v6(&data).unwrap();
         assert_eq!(info.slippage_bps, Some(1000));
         assert!(info.unbounded);
